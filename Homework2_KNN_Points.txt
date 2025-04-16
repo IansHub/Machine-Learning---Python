@@ -1,0 +1,95 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+import numpy as np
+from sklearn.metrics import accuracy_score
+
+
+train_points_df = pd.read_csv("points_training.txt", sep="\t", names=["X","Y","Class"])
+colors = {1: 'red', 2: 'blue', 3: "green"}
+
+test_points_df = pd.read_csv("points_test.txt", sep="\t", names=["X","Y","Class"])
+
+X_train = train_points_df[["X","Y"]]
+y_train = train_points_df["Class"]
+X_test = test_points_df[["X","Y"]]
+y_test = test_points_df[["Class"]]
+
+
+
+class KNNClassifier:
+    def __init__(self, k=3):
+        self.k = k
+        self.X_train = None
+        self.y_train = None
+
+    def fit(self, X, y):
+        self.X_train = np.array(X)
+        self.y_train = np.array(y)
+
+    def _euclidean_distance(self, x, y):
+        distance = np.sqrt(np.sum((x - y) ** 2))
+        return distance
+
+    def _get_neighbors(self, test_point):
+        distances = [self._euclidean_distance(test_point, x) for x in self.X_train]
+        neighbor_indices = np.argsort(distances)[:self.k]
+        return self.y_train[neighbor_indices]
+
+    def _majority_vote(self, neighbors):
+        values, counts = np.unique(neighbors, return_counts=True)
+        return values[np.argmax(counts)]
+
+    def predict(self, X_test):
+        X_test = np.array(X_test)
+        return [self._majority_vote(self._get_neighbors(x)) for x in X_test]
+
+
+
+
+plt.scatter(train_points_df["X"], train_points_df["Y"], c = train_points_df["Class"].map({1:colors[1], 2:colors[2], 3:colors[3]}), label = train_points_df["Class"])
+plt.legend(handles=[
+    Patch(color="red", label = "Class 1"),
+    Patch(color="blue", label = "Class 2"),
+    Patch(color="green", label = "Class 3")
+], title = "Original Data", loc = "upper left", borderpad = 0.2, fontsize = 8)
+plt.show()
+
+
+xmin = min(train_points_df["X"])-5
+xmax = max(train_points_df["X"])+5
+ymin = min(train_points_df["Y"])-5
+ymax = max(train_points_df["Y"])+5
+
+
+new_points_df = pd.DataFrame(dict(
+    X = np.random.randint(xmin, xmax, size=10),
+    Y = np.random.randint(ymin, ymax, size=10),
+))
+print(new_points_df)
+
+knn = KNNClassifier(k=1)
+knn.fit(X_train,y_train)
+y_pred = knn.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {round(accuracy*100,2)}%")
+
+new_points_df["Class"] = knn.predict(new_points_df[["X","Y"]])
+
+print(new_points_df)
+
+new_colors = {1: 'lightcoral', 2: 'cornflowerblue', 3: "palegreen"}
+plt.scatter(train_points_df["X"], train_points_df["Y"], c = train_points_df["Class"].map({1:new_colors[1], 2:new_colors[2], 3:new_colors[3]}), label = train_points_df["Class"])
+plt.scatter(new_points_df["X"], new_points_df["Y"], c = new_points_df["Class"].map({1:colors[1], 2:colors[2], 3:colors[3]}), marker = "*")
+
+
+
+plt.legend(handles=[
+    Patch(color="r", label = "Class 1"),
+    Patch(color="b", label = "Class 2"),
+    Patch(color="g", label = "Class 3")
+], title = "New Classified Data", loc = "upper left", borderpad = 0.2, fontsize = 8)
+
+
+plt.show()
